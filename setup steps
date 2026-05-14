@@ -1,0 +1,287 @@
+# LDAP Server Setup – Step by Step
+
+## What is LDAP?
+
+OpenLDAP (Lightweight Directory Access Protocol) is used to store and manage user information like usernames, passwords, groups, and permissions in a 
+centralized directory server.
+
+---
+
+# Steps to Configure LDAP Server in Linux
+
+## 1. Update the System
+
+```bash
+sudo apt update
+sudo apt upgrade -y
+```
+
+---
+
+## 2. Install OpenLDAP Server
+
+For Ubuntu/Debian:
+
+```bash
+sudo apt install slapd ldap-utils -y
+```
+
+For RHEL/CentOS:
+
+```bash
+sudo yum install openldap openldap-servers openldap-clients -y
+```
+
+---
+
+## 3. Configure LDAP Server
+
+Reconfigure the package:
+
+```bash
+sudo dpkg-reconfigure slapd
+```
+
+During setup enter:
+
+* DNS Domain Name → example.com
+* Organization Name → ExampleOrg
+* Administrator Password
+* Database Backend → MDB
+* Remove Database → No
+
+---
+
+## 4. Check LDAP Service Status
+
+```bash
+sudo systemctl status slapd
+```
+
+Start and enable service:
+
+```bash
+sudo systemctl enable slapd
+sudo systemctl start slapd
+```
+
+---
+
+# LDAP Important Terms
+
+## DN (Distinguished Name)
+
+Unique path of an LDAP entry.
+
+Example:
+
+```text
+dn: uid=rahul,ou=users,dc=example,dc=com
+```
+
+---
+
+## CN (Common Name)
+
+Represents the name of object/user/group.
+
+Example:
+
+```text
+cn: admin
+```
+
+---
+
+## OU (Organizational Unit)
+
+Used to organize users or groups.
+
+Example:
+
+```text
+ou: users
+```
+
+---
+
+## DC (Domain Component)
+
+Represents domain name parts.
+
+Example:
+
+```text
+dc=example,dc=com
+```
+
+---
+
+# 5. Create Base Directory Structure
+
+Create file:
+
+```bash
+nano base.ldif
+```
+
+Add:
+
+```ldif
+dn: ou=users,dc=example,dc=com
+objectClass: organizationalUnit
+ou: users
+
+dn: ou=groups,dc=example,dc=com
+objectClass: organizationalUnit
+ou: groups
+```
+
+Apply configuration:
+
+```bash
+ldapadd -x -D "cn=admin,dc=example,dc=com" -W -f base.ldif
+```
+
+---
+
+# 6. Add New LDAP User
+
+Create file:
+
+```bash
+nano user.ldif
+```
+
+Add:
+
+```ldif
+dn: uid=rahul,ou=users,dc=example,dc=com
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+cn: Rahul Sharma
+sn: Sharma
+uid: rahul
+uidNumber: 1001
+gidNumber: 1001
+homeDirectory: /home/rahul
+loginShell: /bin/bash
+userPassword: rahul123
+```
+
+Add user:
+
+```bash
+ldapadd -x -D "cn=admin,dc=example,dc=com" -W -f user.ldif
+```
+
+---
+
+# 7. Search LDAP Users
+
+```bash
+ldapsearch -x -LLL -b "dc=example,dc=com"
+```
+
+---
+
+# 8. Create LDAP Group
+
+Create file:
+
+```bash
+nano group.ldif
+```
+
+Add:
+
+```ldif
+dn: cn=developers,ou=groups,dc=example,dc=com
+objectClass: posixGroup
+cn: developers
+gidNumber: 5000
+```
+
+Add group:
+
+```bash
+ldapadd -x -D "cn=admin,dc=example,dc=com" -W -f group.ldif
+```
+
+---
+
+# 9. Set LDAP User Password
+
+```bash
+ldappasswd -x -D "cn=admin,dc=example,dc=com" -W \
+-S "uid=rahul,ou=users,dc=example,dc=com"
+```
+
+---
+
+# 10. Test LDAP Authentication
+
+```bash
+ldapwhoami -x -D "uid=rahul,ou=users,dc=example,dc=com" -W
+```
+
+---
+
+# Common LDAP Commands
+
+| Command    | Purpose         |
+| ---------- | --------------- |
+| ldapadd    | Add entries     |
+| ldapsearch | Search entries  |
+| ldapmodify | Modify entries  |
+| ldapdelete | Delete entries  |
+| ldappasswd | Change password |
+
+---
+
+# Important Object Classes
+
+| ObjectClass        | Purpose          |
+| ------------------ | ---------------- |
+| inetOrgPerson      | User information |
+| posixAccount       | Linux account    |
+| organizationalUnit | Create OU        |
+| posixGroup         | Linux group      |
+
+---
+
+# Simple Ansible Automation Example
+
+Install LDAP using Ansible:
+
+```yaml
+---
+- hosts: ldapserver
+  become: yes
+
+  tasks:
+    - name: Install OpenLDAP
+      apt:
+        name:
+          - slapd
+          - ldap-utils
+        state: present
+```
+
+Run playbook:
+
+```bash
+ansible-playbook ldap.yml
+```
+
+---
+
+# Advantages of LDAP Automation Using Ansible
+
+* Faster server deployment
+* Reduced manual work
+* Easy user management
+* Better security and consistency
+* Centralized authentication
+* Scalable infrastructure management
